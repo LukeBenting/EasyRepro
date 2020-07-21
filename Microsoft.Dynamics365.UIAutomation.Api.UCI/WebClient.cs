@@ -2863,61 +2863,21 @@ namespace Microsoft.Dynamics365.UIAutomation.Api.UCI
         {
             return this.Execute(GetOptions($"Remove Multi Select Value: {option.Name}"), driver =>
             {
-                IWebElement fieldContainer = null;
+                IWebElement fieldContainer = GetMultiSelectOptionSetFieldContainer(driver, option, formContextType);
 
-                if (formContextType == FormContextType.QuickCreate)
-                {
-                    // Initialize the quick create form context
-                    // If this is not done -- element input will go to the main form due to new flyout design
-                    var formContext = driver.WaitUntilAvailable(By.XPath(AppElements.Xpath[AppReference.QuickCreate.QuickCreateFormContext]));
-                    fieldContainer = formContext.WaitUntilAvailable(By.XPath(AppElements.Xpath[AppReference.MultiSelect.DivContainer].Replace("[NAME]", option.Name)));
-                }
-                else if (formContextType == FormContextType.Entity)
-                {
-                    // Initialize the entity form context
-                    var formContext = driver.WaitUntilAvailable(By.XPath(AppElements.Xpath[AppReference.Entity.FormContext]));
-                    fieldContainer = formContext.WaitUntilAvailable(By.XPath(AppElements.Xpath[AppReference.MultiSelect.DivContainer].Replace("[NAME]", option.Name)));
-                }
-                else if (formContextType == FormContextType.BusinessProcessFlow)
-                {
-                    // Initialize the Business Process Flow context
-                    var formContext = driver.WaitUntilAvailable(By.XPath(AppElements.Xpath[AppReference.BusinessProcessFlow.BusinessProcessFlowFormContext]));
-                    fieldContainer = formContext.WaitUntilAvailable(By.XPath(AppElements.Xpath[AppReference.MultiSelect.DivContainer].Replace("[NAME]", option.Name)));
-                }
-                else if (formContextType == FormContextType.Header)
-                {
-                    // Initialize the Header context
-                    var formContext = driver.WaitUntilAvailable(By.XPath(AppElements.Xpath[AppReference.Entity.HeaderContext]));
-                    fieldContainer = formContext.WaitUntilAvailable(By.XPath(AppElements.Xpath[AppReference.MultiSelect.DivContainer].Replace("[NAME]", option.Name)));
-                }
+                // Click into container to focus
+                fieldContainer.Click();
 
-                // If there are large number of options selected then a small expand collapse 
-                // button needs to be clicked to expose all the list elements.
-                var xpath = AppElements.Xpath[AppReference.MultiSelect.ExpandCollapseButton].Replace("[NAME]", option.Name);
-                var expandCollapseButtons = fieldContainer.FindElements(By.XPath(xpath));
-                if (expandCollapseButtons.Any())
-                {
-                    expandCollapseButtons.First().Click(true);
-                }
-                else
-                {
-                    // Hover the field to expose the Select Record buttons
-                    fieldContainer.Hover(driver, true);
-                }
-                    
+                // Click expand button in case of large number of currently selected options
+                fieldContainer.FindElement(By.XPath(AppElements.Xpath[AppReference.MultiSelect.ExpandCollapseButton])).Click();
 
-                xpath = String.Format(AppElements.Xpath[AppReference.MultiSelect.SelectedRecordButton].Replace("[NAME]", option.Name));
-                var listItemObjects = fieldContainer.FindElements(By.XPath(xpath));
-                var loopCounts = listItemObjects.Any() ? listItemObjects.Count : 0;
+                // Find selected list items
+                var selectedItems = fieldContainer.FindElements(By.XPath(AppReference.MultiSelect.SelectedRecord));
 
-                for (int i = 0; i < loopCounts; i++)
+                // Click each selected list item to unselect
+                foreach (IWebElement item in selectedItems)
                 {
-                    // With every click of the button, the underlying DOM changes and the
-                    // entire collection becomes stale, hence we only click the first occurance of
-                    // the button and loop back to again find the elements and anyother occurance
-                    listItemObjects[0].FindElement(By.TagName("button")).Click(true);
-                    driver.WaitForTransaction();
-                    listItemObjects = fieldContainer.FindElements(By.XPath(xpath));
+                    item.Click();
                 }
 
                 return true;
@@ -2933,89 +2893,64 @@ namespace Microsoft.Dynamics365.UIAutomation.Api.UCI
         {
             return this.Execute(GetOptions($"Add Multi Select Value: {option.Name}"), driver =>
             {
-                IWebElement fieldContainer = null;
+                IWebElement fieldContainer = GetMultiSelectOptionSetFieldContainer(driver, option, formContextType);
 
-                if (formContextType == FormContextType.QuickCreate)
-                {
-                    // Initialize the quick create form context
-                    // If this is not done -- element input will go to the main form due to new flyout design
-                    var formContext = driver.WaitUntilAvailable(By.XPath(AppElements.Xpath[AppReference.QuickCreate.QuickCreateFormContext]));
-                    fieldContainer = formContext.WaitUntilAvailable(By.XPath(AppElements.Xpath[AppReference.MultiSelect.DivContainer].Replace("[NAME]", option.Name)));
-                }
-                else if (formContextType == FormContextType.Entity)
-                {
-                    // Initialize the entity form context
-                    var formContext = driver.WaitUntilAvailable(By.XPath(AppElements.Xpath[AppReference.Entity.FormContext]));
-                    fieldContainer = formContext.WaitUntilAvailable(By.XPath(AppElements.Xpath[AppReference.MultiSelect.DivContainer].Replace("[NAME]", option.Name)));
-                }
-                else if (formContextType == FormContextType.BusinessProcessFlow)
-                {
-                    // Initialize the Business Process Flow context
-                    var formContext = driver.WaitUntilAvailable(By.XPath(AppElements.Xpath[AppReference.BusinessProcessFlow.BusinessProcessFlowFormContext]));
-                    fieldContainer = formContext.WaitUntilAvailable(By.XPath(AppElements.Xpath[AppReference.MultiSelect.DivContainer].Replace("[NAME]", option.Name)));
-                }
-                else if (formContextType == FormContextType.Header)
-                {
-                    // Initialize the Header context
-                    var formContext = driver.WaitUntilAvailable(By.XPath(AppElements.Xpath[AppReference.Entity.HeaderContext]));
-                    fieldContainer = formContext.WaitUntilAvailable(By.XPath(AppElements.Xpath[AppReference.MultiSelect.DivContainer].Replace("[NAME]", option.Name)));
-                }
+                // Click into the container to set focus
+                fieldContainer.Click();
 
-
-                
-                string xpath = AppElements.Xpath[AppReference.MultiSelect.SelectedRecord].Replace("[NAME]", option.Name);
-                // If there is already some pre-selected items in the div then we must determine if it
-                // actually exists and simulate a set focus event on that div so that the input textbox
-                // becomes visible.
-                var listItems = fieldContainer.FindElements(By.XPath(xpath));
-                if (listItems.Any())
-                {
-                    listItems.First().SendKeys("");
-                }
-
-                fieldContainer.ClickWhenAvailable(By.XPath(AppElements.Xpath[AppReference.MultiSelect.InputSearch].Replace("[NAME]", option.Name)));
                 foreach (var optionValue in option.Values)
                 {
-                    xpath = String.Format(AppElements.Xpath[AppReference.MultiSelect.FlyoutList].Replace("[NAME]", option.Name), optionValue);
-                    var flyout = fieldContainer.FindElements(By.XPath(xpath));
-                    if (flyout.Any())
+                    var input = fieldContainer.FindElement(By.TagName("input"));
+                    input.Clear();
+                    input.SendKeys(optionValue);
+                    ThinkTime(2000);
+                    var searchFlyout = fieldContainer.WaitUntilAvailable(By.XPath(AppElements.Xpath[AppReference.MultiSelect.Flyout]));
+                    ThinkTime(2000);
+                    var searchResultList = searchFlyout.FindElements(By.XPath(AppElements.Xpath[AppReference.MultiSelect.SearchResultLabel].Replace("[NAME]", option.Name)));
+
+                    // Is the item in search results?
+                    if (searchResultList.Any(x => x.GetAttribute("title").Contains(optionValue, StringComparison.OrdinalIgnoreCase)))
                     {
-                        flyout.First().Click(true);
+                        searchResultList.FirstOrDefault(x => x.GetAttribute("title").Contains(optionValue, StringComparison.OrdinalIgnoreCase)).Click(true);
+                        driver.WaitForTransaction();
                     }
                     else
-                    {
-                        var input = fieldContainer.FindElement(By.TagName("input"));
-                        input.SendKeys(optionValue);
-                        ThinkTime(2000);
-                        var searchFlyout = fieldContainer.WaitUntilAvailable(By.XPath(AppElements.Xpath[AppReference.MultiSelect.Flyout].Replace("[NAME]", option.Name)));
-                        ThinkTime(2000);  
-                        var searchResultList = searchFlyout.FindElements(By.TagName("li"));
-
-                        
-                        // Is the item in search results?
-                        if (searchResultList.Any(x => x.GetAttribute("aria-label").Contains(optionValue, StringComparison.OrdinalIgnoreCase)))
-                        {
-                            searchResultList.FirstOrDefault(x => x.GetAttribute("aria-label").Contains(optionValue, StringComparison.OrdinalIgnoreCase)).Click(true);
-                            driver.WaitForTransaction();
-                        }
-                    }    
+                        throw new InvalidOperationException($"Option with text '{optionValue}' could not be found for '{option.Name}'");
                 }
 
-                // Click on the div containing textbox so that the floyout collapses or else the flyout
-                // will interfere in finding the next multiselect control which by chance will be lying
-                // behind the flyout control.
-                //driver.ClickWhenAvailable(By.XPath(AppElements.Xpath[AppReference.MultiSelect.DivContainer].Replace("[NAME]", Elements.ElementId[option.Name])));
-                xpath = AppElements.Xpath[AppReference.MultiSelect.DivContainer].Replace("[NAME]", option.Name);
-                var divElements = fieldContainer.FindElements(By.XPath(xpath));
-                if (divElements.Any())
-                {
-                    divElements.First().Click(true);
-                }
-
-                fieldContainer.Click(true);
+                // Collapse the MultiSelect so it doesn't interfere with any other elements
+                driver.FindElement(By.XPath(AppElements.Xpath[AppReference.MultiSelect.ExpandCollapseButton]))
+                    .Click();
 
                 return true;
             });
+        }
+
+        private IWebElement GetMultiSelectOptionSetFieldContainer(IWebDriver driver, MultiValueOptionSet option, FormContextType formContextType)
+        {
+            IWebElement formContext;
+            switch (formContextType)
+            {
+                case FormContextType.QuickCreate:
+                    // Initialize the quick create form context
+                    // If this is not done -- element input will go to the main form due to new flyout design
+                    formContext = driver.WaitUntilAvailable(By.XPath(AppElements.Xpath[AppReference.QuickCreate.QuickCreateFormContext]));
+                    return formContext.WaitUntilAvailable(By.XPath(AppElements.Xpath[AppReference.MultiSelect.DivContainer].Replace("[NAME]", option.Name)));
+                case FormContextType.Entity:
+                    // Initialize the entity form context
+                    formContext = driver.WaitUntilAvailable(By.XPath(AppElements.Xpath[AppReference.Entity.FormContext]));
+                    return formContext.WaitUntilAvailable(By.XPath(AppElements.Xpath[AppReference.MultiSelect.DivContainer].Replace("[NAME]", option.Name)));
+                case FormContextType.BusinessProcessFlow:
+                    // Initialize the Business Process Flow context
+                    formContext = driver.WaitUntilAvailable(By.XPath(AppElements.Xpath[AppReference.BusinessProcessFlow.BusinessProcessFlowFormContext]));
+                    return formContext.WaitUntilAvailable(By.XPath(AppElements.Xpath[AppReference.MultiSelect.DivContainer].Replace("[NAME]", option.Name)));
+                case FormContextType.Header:
+                    // Initialize the Header context
+                    formContext = driver.WaitUntilAvailable(By.XPath(AppElements.Xpath[AppReference.Entity.HeaderContext]));
+                    return formContext.WaitUntilAvailable(By.XPath(AppElements.Xpath[AppReference.MultiSelect.DivContainer].Replace("[NAME]", option.Name)));
+                default:
+                    return null;
+            }
         }
 
         internal BrowserCommandResult<Field> GetField(string field)
@@ -3265,29 +3200,22 @@ namespace Microsoft.Dynamics365.UIAutomation.Api.UCI
         /// </summary>
         /// <param name="option">Object of type MultiValueOptionSet containing name of the Field</param>
         /// <returns>MultiValueOptionSet object where the values field contains all the contact names</returns>
-        internal BrowserCommandResult<MultiValueOptionSet> GetValue(MultiValueOptionSet option)
+        internal BrowserCommandResult<MultiValueOptionSet> GetValue(MultiValueOptionSet option, FormContextType formContextType)
         {
             return this.Execute(GetOptions($"Get Multi Select Value: {option.Name}"), driver =>
             {
-                // If there are large number of options selected then a small expand collapse 
-                // button needs to be clicked to expose all the list elements.
-                string xpath = AppElements.Xpath[AppReference.MultiSelect.ExpandCollapseButton].Replace("[NAME]", Elements.ElementId[option.Name]);
-                var expandCollapseButtons = driver.FindElements(By.XPath(xpath));
-                if (expandCollapseButtons.Any())
-                {
-                    expandCollapseButtons.First().Click(true);
-                }
+                IWebElement fieldContainer = GetMultiSelectOptionSetFieldContainer(driver, option, formContextType);
+
+                // Find selected list items
+                var selectedItems = fieldContainer.FindElements(By.XPath(AppReference.MultiSelect.SelectedRecord));
 
                 var returnValue = new MultiValueOptionSet { Name = option.Name };
 
-                xpath = AppElements.Xpath[AppReference.MultiSelect.SelectedRecordLabel].Replace("[NAME]", Elements.ElementId[option.Name]);
-                var labelItems = driver.FindElements(By.XPath(xpath));
-                if (labelItems.Any())
+                if (selectedItems.Any())
                 {
-                    returnValue.Values = labelItems.Select(x => x.Text).ToArray();
+                    returnValue.Values = selectedItems.Select(x => x.Text).ToArray();
                 }
 
-                driver.ClearFocus();
                 return returnValue;
             });
         }
@@ -3737,7 +3665,7 @@ namespace Microsoft.Dynamics365.UIAutomation.Api.UCI
             {
                 TryExpandHeaderFlyout(driver);
 
-                return GetValue(control);
+                return GetValue(control, FormContextType.Header);
             });
         }
 

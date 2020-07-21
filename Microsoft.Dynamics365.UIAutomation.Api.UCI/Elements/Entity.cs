@@ -335,7 +335,7 @@ namespace Microsoft.Dynamics365.UIAutomation.Api.UCI
         /// <param name="option">The option you want to set.</param>
         public void GetValue(MultiValueOptionSet option)
         {
-            _client.GetValue(option);
+            _client.GetValue(option, FormContextType.Entity);
         }
 
         /// <summary>

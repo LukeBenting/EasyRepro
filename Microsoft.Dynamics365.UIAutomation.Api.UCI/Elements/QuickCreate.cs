@@ -106,7 +106,7 @@ namespace Microsoft.Dynamics365.UIAutomation.Api.UCI
         /// <param name="removeExistingValues">False - Values will be set. True - Values will be removed</param>
         public MultiValueOptionSet GetValue(MultiValueOptionSet field)
         {
-            return _client.GetValue(field);
+            return _client.GetValue(field, FormContextType.QuickCreate);
         }
 
         /// <summary>
